@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CalendarCheck2, Clock3, ListChecks } from "lucide-react";
+import { CalendarCheck2, Inbox, ShieldCheck, Clock3 } from "lucide-react";
 
 import type { Booking, Service } from "@/lib/types";
 import { minutesToLabel, toDateStr } from "@/lib/format";
@@ -12,33 +12,35 @@ import { Badge } from "@/components/ui/badge";
 export default function DashboardOverviewPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [services, setServices] = useState<Service[]>([]);
+  const [stats, setStats] = useState({ totalRequests: 0, cancelledCount: 0 });
+  const [timezone, setTimezone] = useState("");
 
   useEffect(() => {
     fetch("/api/bookings").then((r) => r.json()).then(setBookings);
     fetch("/api/services").then((r) => r.json()).then(setServices);
+    fetch("/api/settings").then((r) => r.json()).then((s) => setStats({ totalRequests: s.totalRequests, cancelledCount: s.cancelledCount }));
+    setTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone);
   }, []);
 
   const todayStr = toDateStr(new Date());
-  const weekAhead = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 7);
-    return toDateStr(d);
-  }, []);
-
-  const upcomingThisWeek = bookings.filter((b) => b.date >= todayStr && b.date <= weekAhead).length;
-
   const upcoming = [...bookings]
     .sort((a, b) => (a.date + a.startMinutes).localeCompare(b.date + b.startMinutes))
     .slice(0, 5);
 
   return (
     <div className="p-8 space-y-8">
-      <header>
-        <p className="text-sm text-muted-foreground">Dashboard</p>
-        <h1 className="text-2xl font-semibold tracking-tight">Scheduling overview</h1>
+      <header className="flex items-center justify-between">
+        <div>
+          <p className="text-sm text-muted-foreground">Dashboard</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Scheduling overview</h1>
+        </div>
+        <Badge variant="secondary" className="gap-1.5 py-1.5 px-3">
+          <span className="size-1.5 rounded-full bg-emerald-500" />
+          Scheduling is active
+        </Badge>
       </header>
 
-      <div className="grid sm:grid-cols-3 gap-4">
+      <div className="grid sm:grid-cols-2 gap-4">
         <Card className="p-5">
           <div className="flex items-center gap-2 text-muted-foreground text-sm mb-2">
             <CalendarCheck2 className="size-4" />
@@ -48,17 +50,24 @@ export default function DashboardOverviewPage() {
         </Card>
         <Card className="p-5">
           <div className="flex items-center gap-2 text-muted-foreground text-sm mb-2">
-            <Clock3 className="size-4" />
-            Next 7 days
+            <Inbox className="size-4" />
+            Total requests
           </div>
-          <p className="text-3xl font-semibold">{upcomingThisWeek}</p>
+          <p className="text-3xl font-semibold">{stats.totalRequests}</p>
         </Card>
         <Card className="p-5">
           <div className="flex items-center gap-2 text-muted-foreground text-sm mb-2">
-            <ListChecks className="size-4" />
-            Services offered
+            <ShieldCheck className="size-4" />
+            Cancelled
           </div>
-          <p className="text-3xl font-semibold">{services.length}</p>
+          <p className="text-3xl font-semibold">{stats.cancelledCount}</p>
+        </Card>
+        <Card className="p-5">
+          <div className="flex items-center gap-2 text-muted-foreground text-sm mb-2">
+            <Clock3 className="size-4" />
+            Timezone
+          </div>
+          <p className="text-lg font-semibold truncate">{timezone || "—"}</p>
         </Card>
       </div>
 
@@ -88,7 +97,7 @@ export default function DashboardOverviewPage() {
                   <p>{b.date}</p>
                   <p className="text-muted-foreground">{minutesToLabel(b.startMinutes)}</p>
                 </div>
-                <Badge variant="secondary">{b.date === todayStr ? "Today" : "Upcoming"}</Badge>
+                <Badge variant="secondary">{b.date === todayStr ? "Today" : "Confirmed"}</Badge>
               </div>
             );
           })}

@@ -28,6 +28,9 @@ function seed(): Business {
     ],
     workingHours: DEFAULT_HOURS,
     bookings: [],
+    bufferMinutes: 0,
+    totalRequests: 0,
+    cancelledCount: 0,
   };
 }
 
@@ -38,6 +41,10 @@ async function load(): Promise<Business> {
   try {
     const raw = await fs.readFile(DATA_FILE, "utf-8");
     cache = JSON.parse(raw) as Business;
+    // Backfill fields added after some deployments already have a persisted file on disk.
+    cache.bufferMinutes ??= 0;
+    cache.totalRequests ??= cache.bookings.length;
+    cache.cancelledCount ??= 0;
   } catch {
     cache = seed();
     await persist();
@@ -115,12 +122,26 @@ export async function createBooking(input: CreateBookingInput): Promise<Booking>
 
   const booking: Booking = { ...input, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
   b.bookings.push(booking);
+  b.totalRequests += 1;
   await persist();
   return booking;
 }
 
 export async function cancelBooking(id: string): Promise<void> {
   const b = await load();
+  const existed = b.bookings.some((bk) => bk.id === id);
   b.bookings = b.bookings.filter((bk) => bk.id !== id);
+  if (existed) b.cancelledCount += 1;
+  await persist();
+}
+
+export async function getSettings(): Promise<{ bufferMinutes: number; totalRequests: number; cancelledCount: number }> {
+  const b = await load();
+  return { bufferMinutes: b.bufferMinutes, totalRequests: b.totalRequests, cancelledCount: b.cancelledCount };
+}
+
+export async function setBufferMinutes(bufferMinutes: number): Promise<void> {
+  const b = await load();
+  b.bufferMinutes = bufferMinutes;
   await persist();
 }

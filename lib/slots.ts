@@ -28,15 +28,24 @@ export interface SlotOptions {
   workingHours: WorkingHours;
   bookingsForDate: Booking[];
   now?: Date;
+  /** Minutes of breathing room required before and after every existing booking. */
+  bufferMinutes?: number;
 }
 
 /**
  * Computes bookable start times (in minutes-since-midnight) for a given date/service:
  * every `GRANULARITY_MINUTES` slot within working hours where the full service duration
- * fits, doesn't overlap an existing booking, and (for today) is at least
- * `MIN_NOTICE_MINUTES` from now.
+ * fits, doesn't overlap an existing booking (padded by `bufferMinutes` on both sides),
+ * and (for today) is at least `MIN_NOTICE_MINUTES` from now.
  */
-export function getAvailableSlots({ date, service, workingHours, bookingsForDate, now = new Date() }: SlotOptions): number[] {
+export function getAvailableSlots({
+  date,
+  service,
+  workingHours,
+  bookingsForDate,
+  now = new Date(),
+  bufferMinutes = 0,
+}: SlotOptions): number[] {
   const ranges = workingHours[weekdayOf(date)] ?? [];
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const isToday = date === todayStr;
@@ -51,7 +60,9 @@ export function getAvailableSlots({ date, service, workingHours, bookingsForDate
     for (let start = rangeStart; start + service.durationMinutes <= rangeEnd; start += GRANULARITY_MINUTES) {
       if (start < earliestAllowed) continue;
       const end = start + service.durationMinutes;
-      const overlaps = bookingsForDate.some((bk) => start < bk.endMinutes && bk.startMinutes < end);
+      const overlaps = bookingsForDate.some(
+        (bk) => start < bk.endMinutes + bufferMinutes && bk.startMinutes - bufferMinutes < end
+      );
       if (!overlaps) slots.push(start);
     }
   }

@@ -12,12 +12,23 @@ import { toast } from "sonner";
 export default function SettingsPage() {
   const [services, setServices] = useState<Service[]>([]);
   const [newService, setNewService] = useState({ name: "", durationMinutes: "30", price: "0" });
+  const [bufferMinutes, setBufferMinutes] = useState("0");
 
   const refresh = () => {
     fetch("/api/services").then((r) => r.json()).then(setServices);
+    fetch("/api/settings").then((r) => r.json()).then((s) => setBufferMinutes(String(s.bufferMinutes)));
   };
 
   useEffect(refresh, []);
+
+  const saveBuffer = async () => {
+    await fetch("/api/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ bufferMinutes: Number(bufferMinutes) }),
+    });
+    toast.success("Buffer time saved");
+  };
 
   const addService = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,6 +105,28 @@ export default function SettingsPage() {
             Add
           </Button>
         </form>
+      </Card>
+
+      <Card className="p-5">
+        <h2 className="font-medium mb-1">Buffer time</h2>
+        <p className="text-sm text-muted-foreground mb-3">
+          Minutes of breathing room to keep open before and after every booking, so back-to-back
+          clients never run into each other.
+        </p>
+        <div className="flex items-center gap-2">
+          <Input
+            type="number"
+            min={0}
+            step={5}
+            value={bufferMinutes}
+            onChange={(e) => setBufferMinutes(e.target.value)}
+            className="w-24"
+          />
+          <span className="text-sm text-muted-foreground">minutes</span>
+          <Button variant="outline" className="rounded-lg ml-2" onClick={saveBuffer}>
+            Save
+          </Button>
+        </div>
       </Card>
     </div>
   );

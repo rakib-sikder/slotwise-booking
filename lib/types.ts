@@ -29,4 +29,7 @@ export interface Business {
   services: Service[];
   workingHours: WorkingHours;
   bookings: Booking[];
+  bufferMinutes: number;
+  totalRequests: number;
+  cancelledCount: number;
 }
