@@ -3,6 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { LogoMark } from "@/components/logo-mark";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
 export default function LoginPage() {
   const router = useRouter();
   const [password, setPassword] = useState("");
@@ -28,26 +32,25 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 px-6">
+    <div className="min-h-screen flex items-center justify-center bg-background text-foreground px-6">
       <form onSubmit={submit} className="w-full max-w-sm space-y-4">
+        <div className="mb-2">
+          <LogoMark />
+        </div>
         <h1 className="text-xl font-semibold">Owner login</h1>
-        <input
+        <Input
           type="password"
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm"
         />
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full rounded-lg bg-blue-600 text-white text-sm font-medium px-4 py-2 disabled:opacity-50"
-        >
+        {error && <p className="text-sm text-destructive">{error}</p>}
+        <Button type="submit" disabled={submitting} className="w-full rounded-lg">
           {submitting ? "Signing in…" : "Sign in"}
-        </button>
-        <p className="text-xs text-neutral-400 text-center">
-          Demo password: <code>demo1234</code> (or your <code>OWNER_PASSWORD</code> env var)
+        </Button>
+        <p className="text-xs text-muted-foreground text-center">
+          Demo password: <code className="rounded bg-muted px-1 py-0.5">demo1234</code> (or your{" "}
+          <code className="rounded bg-muted px-1 py-0.5">OWNER_PASSWORD</code> env var)
         </p>
       </form>
     </div>

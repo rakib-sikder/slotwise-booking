@@ -1,8 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useGSAP } from "@gsap/react";
+import gsap from "gsap";
+import { animate } from "animejs";
+import { LogOut, Trash2 } from "lucide-react";
+
 import type { Booking, Service, WorkingHours } from "@/lib/types";
+import { LogoMark } from "@/components/logo-mark";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 
 function minutesToLabel(minutes: number): string {
   const h24 = Math.floor(minutes / 60);
@@ -20,6 +29,8 @@ export function AdminDashboard() {
   const [services, setServices] = useState<Service[]>([]);
   const [hours, setHours] = useState<WorkingHours>({});
   const [newService, setNewService] = useState({ name: "", durationMinutes: "30", price: "0" });
+  const saveBtnRef = useRef<HTMLButtonElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   const refresh = () => {
     fetch("/api/bookings").then((r) => r.json()).then(setBookings);
@@ -28,6 +39,13 @@ export function AdminDashboard() {
   };
 
   useEffect(refresh, []);
+
+  useGSAP(
+    () => {
+      gsap.from("[data-reveal]", { opacity: 0, y: 14, duration: 0.5, stagger: 0.08, ease: "power3.out" });
+    },
+    { scope: rootRef }
+  );
 
   const logout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -74,6 +92,9 @@ export function AdminDashboard() {
   };
 
   const saveHours = async () => {
+    if (saveBtnRef.current) {
+      animate(saveBtnRef.current, { scale: [1, 0.92, 1], duration: 250, ease: "outQuad" });
+    }
     await fetch("/api/hours", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -82,50 +103,86 @@ export function AdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100">
+    <div ref={rootRef} className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-4xl px-6 py-10 space-y-10">
-        <header className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Owner dashboard</h1>
-          <button onClick={logout} className="text-sm rounded-full border border-neutral-300 dark:border-neutral-700 px-4 py-2 hover:border-neutral-400">
+        <header data-reveal className="flex items-center justify-between">
+          <LogoMark className="text-xl" />
+          <Button variant="outline" className="rounded-full" onClick={logout}>
+            <LogOut className="size-3.5" />
             Log out
-          </button>
+          </Button>
         </header>
 
-        <section>
+        <section data-reveal>
           <h2 className="font-medium mb-3">Upcoming bookings ({bookings.length})</h2>
           <div className="space-y-2">
-            {bookings.length === 0 && <p className="text-sm text-neutral-400">No upcoming bookings.</p>}
+            {bookings.length === 0 && <p className="text-sm text-muted-foreground">No upcoming bookings.</p>}
             {bookings.map((b) => (
-              <div key={b.id} className="flex items-center justify-between rounded-lg border border-neutral-200 dark:border-neutral-800 px-4 py-3 text-sm">
+              <div
+                key={b.id}
+                className="flex items-center justify-between rounded-lg border border-border px-4 py-3 text-sm animate-in fade-in slide-in-from-bottom-1 duration-300"
+              >
                 <div>
-                  <p className="font-medium">{b.customerName} <span className="text-neutral-400 font-normal">— {b.customerEmail}</span></p>
-                  <p className="text-neutral-500">{b.date} at {minutesToLabel(b.startMinutes)}</p>
+                  <p className="font-medium">
+                    {b.customerName} <span className="text-muted-foreground font-normal">— {b.customerEmail}</span>
+                  </p>
+                  <p className="text-muted-foreground">
+                    {b.date} at {minutesToLabel(b.startMinutes)}
+                  </p>
                 </div>
-                <button onClick={() => cancelBooking(b.id)} className="text-red-600 hover:underline">Cancel</button>
+                <button onClick={() => cancelBooking(b.id)} className="text-destructive hover:underline">
+                  Cancel
+                </button>
               </div>
             ))}
           </div>
         </section>
 
-        <section>
+        <section data-reveal>
           <h2 className="font-medium mb-3">Services</h2>
           <div className="space-y-2 mb-4">
             {services.map((s) => (
-              <div key={s.id} className="flex items-center justify-between rounded-lg border border-neutral-200 dark:border-neutral-800 px-4 py-2.5 text-sm">
-                <span>{s.name} · {s.durationMinutes}min · ${s.price}</span>
-                <button onClick={() => removeService(s.id)} className="text-red-600 hover:underline">Remove</button>
+              <div key={s.id} className="flex items-center justify-between rounded-lg border border-border px-4 py-2.5 text-sm">
+                <span>
+                  {s.name} · {s.durationMinutes}min · ${s.price}
+                </span>
+                <button onClick={() => removeService(s.id)} className="text-destructive hover:underline flex items-center gap-1">
+                  <Trash2 className="size-3.5" />
+                  Remove
+                </button>
               </div>
             ))}
           </div>
           <form onSubmit={addService} className="flex flex-wrap gap-2">
-            <input placeholder="Service name" value={newService.name} onChange={(e) => setNewService({ ...newService, name: e.target.value })} className="rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm flex-1 min-w-[140px]" />
-            <input type="number" min={5} placeholder="Minutes" value={newService.durationMinutes} onChange={(e) => setNewService({ ...newService, durationMinutes: e.target.value })} className="w-24 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm" />
-            <input type="number" min={0} placeholder="Price $" value={newService.price} onChange={(e) => setNewService({ ...newService, price: e.target.value })} className="w-24 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm" />
-            <button type="submit" className="rounded-lg bg-blue-600 text-white text-sm font-medium px-4 py-2">Add</button>
+            <Input
+              placeholder="Service name"
+              value={newService.name}
+              onChange={(e) => setNewService({ ...newService, name: e.target.value })}
+              className="flex-1 min-w-[140px]"
+            />
+            <Input
+              type="number"
+              min={5}
+              placeholder="Minutes"
+              value={newService.durationMinutes}
+              onChange={(e) => setNewService({ ...newService, durationMinutes: e.target.value })}
+              className="w-24"
+            />
+            <Input
+              type="number"
+              min={0}
+              placeholder="Price $"
+              value={newService.price}
+              onChange={(e) => setNewService({ ...newService, price: e.target.value })}
+              className="w-24"
+            />
+            <Button type="submit" className="rounded-lg">
+              Add
+            </Button>
           </form>
         </section>
 
-        <section>
+        <section data-reveal>
           <h2 className="font-medium mb-3">Working hours</h2>
           <div className="space-y-2">
             {DAY_NAMES.map((name, day) => {
@@ -134,23 +191,33 @@ export function AdminDashboard() {
               return (
                 <div key={day} className="flex items-center gap-3 text-sm">
                   <label className="flex items-center gap-2 w-32">
-                    <input type="checkbox" checked={open} onChange={(e) => toggleDay(day, e.target.checked)} />
+                    <Switch checked={open} onCheckedChange={(checked) => toggleDay(day, checked)} />
                     {name}
                   </label>
                   {open && range && (
                     <>
-                      <input type="time" value={range.start} onChange={(e) => updateDay(day, "start", e.target.value)} className="rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2 py-1" />
-                      <span className="text-neutral-400">to</span>
-                      <input type="time" value={range.end} onChange={(e) => updateDay(day, "end", e.target.value)} className="rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2 py-1" />
+                      <Input
+                        type="time"
+                        value={range.start}
+                        onChange={(e) => updateDay(day, "start", e.target.value)}
+                        className="w-auto"
+                      />
+                      <span className="text-muted-foreground">to</span>
+                      <Input
+                        type="time"
+                        value={range.end}
+                        onChange={(e) => updateDay(day, "end", e.target.value)}
+                        className="w-auto"
+                      />
                     </>
                   )}
                 </div>
               );
             })}
           </div>
-          <button onClick={saveHours} className="mt-4 rounded-lg bg-blue-600 text-white text-sm font-medium px-4 py-2">
+          <Button ref={saveBtnRef} onClick={saveHours} className="mt-4 rounded-lg">
             Save hours
-          </button>
+          </Button>
         </section>
       </div>
     </div>
