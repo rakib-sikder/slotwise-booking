@@ -18,7 +18,7 @@ function minutesToLabel(minutes: number): string {
 const days = Array.from({ length: 14 }, (_, i) => {
   const d = new Date();
   d.setDate(d.getDate() + i);
-  return { value: toDateStr(d), label: d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }) };
+  return { value: toDateStr(d), label: d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) };
 });
 
 export default function BookPage() {
@@ -142,6 +142,7 @@ export default function BookPage() {
               <button
                 key={d.value}
                 onClick={() => setDate(d.value)}
+                suppressHydrationWarning
                 className={`shrink-0 rounded-lg px-3 py-2 text-xs border transition-colors ${
                   d.value === date
                     ? "bg-blue-600 border-blue-600 text-white"

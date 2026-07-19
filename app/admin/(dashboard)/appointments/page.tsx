@@ -94,7 +94,7 @@ export default function AppointmentsPage() {
               Today
             </Button>
           </div>
-          <p className="text-sm font-medium text-muted-foreground">
+          <p className="text-sm font-medium text-muted-foreground" suppressHydrationWarning>
             <CalendarLabel view={view} cursor={cursor} />
           </p>
           <div className="inline-flex rounded-lg border border-border p-0.5">
@@ -171,15 +171,15 @@ export default function AppointmentsPage() {
 }
 
 function CalendarLabel({ view, cursor }: { view: View; cursor: Date }) {
-  if (view === "month") return <>{cursor.toLocaleDateString(undefined, { month: "long", year: "numeric" })}</>;
-  if (view === "day") return <>{cursor.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}</>;
+  if (view === "month") return <>{cursor.toLocaleDateString("en-US", { month: "long", year: "numeric" })}</>;
+  if (view === "day") return <>{cursor.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}</>;
   const start = startOfWeek(cursor);
   const end = new Date(start);
   end.setDate(end.getDate() + 6);
   return (
     <>
-      {start.toLocaleDateString(undefined, { month: "short", day: "numeric" })} –{" "}
-      {end.toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+      {start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} –{" "}
+      {end.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
     </>
   );
 }

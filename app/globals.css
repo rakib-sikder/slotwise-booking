@@ -47,6 +47,8 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  --color-brand-violet: var(--brand-violet);
+  --color-brand-cyan: var(--brand-cyan);
 }
 
 :root {
@@ -128,4 +130,29 @@
   html {
     @apply font-sans;
   }
+}
+
+/* Marketplace ("studio") theme — dark, violet/cyan, scoped to the (site) route group only. */
+.studio-theme {
+  --background: #0a0a0a;
+  --foreground: #f9fafb;
+  --card: #111827;
+  --card-foreground: #f9fafb;
+  --popover: #111827;
+  --popover-foreground: #f9fafb;
+  --primary: #8b5cf6;
+  --primary-foreground: #ffffff;
+  --secondary: #1a2130;
+  --secondary-foreground: #f9fafb;
+  --muted: #151b28;
+  --muted-foreground: #9ca3af;
+  --accent: #1a2130;
+  --accent-foreground: #f9fafb;
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: rgba(249, 250, 251, 0.08);
+  --input: rgba(249, 250, 251, 0.12);
+  --ring: #8b5cf6;
+  --brand-violet: #8b5cf6;
+  --brand-cyan: #06b6d4;
+  color-scheme: dark;
 }
