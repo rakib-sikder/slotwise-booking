@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CalendarCheck2, Inbox, ShieldCheck, Clock3 } from "lucide-react";
+import { CalendarCheck2, Inbox, ShieldCheck, Clock3, Mail } from "lucide-react";
 
-import type { Booking, Service } from "@/lib/types";
+import type { Booking, Service, ContactMessage } from "@/lib/types";
 import { minutesToLabel, toDateStr } from "@/lib/format";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,11 +14,13 @@ export default function DashboardOverviewPage() {
   const [services, setServices] = useState<Service[]>([]);
   const [stats, setStats] = useState({ totalRequests: 0, cancelledCount: 0 });
   const [timezone, setTimezone] = useState("");
+  const [messages, setMessages] = useState<ContactMessage[]>([]);
 
   useEffect(() => {
     fetch("/api/bookings").then((r) => r.json()).then(setBookings);
     fetch("/api/services").then((r) => r.json()).then(setServices);
     fetch("/api/settings").then((r) => r.json()).then((s) => setStats({ totalRequests: s.totalRequests, cancelledCount: s.cancelledCount }));
+    fetch("/api/contact").then((r) => (r.ok ? r.json() : [])).then(setMessages);
     setTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone);
   }, []);
 
@@ -101,6 +103,31 @@ export default function DashboardOverviewPage() {
               </div>
             );
           })}
+        </div>
+      </Card>
+
+      <Card className="p-0 overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <div>
+            <h2 className="font-medium">Recent messages</h2>
+            <p className="text-sm text-muted-foreground">Submissions from the contact form.</p>
+          </div>
+          <Mail className="size-4 text-muted-foreground" />
+        </div>
+        <div className="divide-y divide-border">
+          {messages.length === 0 && (
+            <p className="px-5 py-6 text-sm text-muted-foreground">No messages yet.</p>
+          )}
+          {messages.map((m) => (
+            <div key={m.id} className="px-5 py-3 text-sm">
+              <div className="flex items-center justify-between">
+                <p className="font-medium">{m.name}</p>
+                <p className="text-muted-foreground">{new Date(m.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</p>
+              </div>
+              <p className="text-muted-foreground">{m.email}</p>
+              <p className="mt-1 line-clamp-2">{m.message}</p>
+            </div>
+          ))}
         </div>
       </Card>
     </div>

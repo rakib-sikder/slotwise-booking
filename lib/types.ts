@@ -24,6 +24,15 @@ export interface Booking {
   createdAt: string;
 }
 
+export interface ContactMessage {
+  id: string;
+  name: string;
+  email: string;
+  topic: string;
+  message: string;
+  createdAt: string;
+}
+
 export interface Business {
   name: string;
   services: Service[];
@@ -32,4 +41,5 @@ export interface Business {
   bufferMinutes: number;
   totalRequests: number;
   cancelledCount: number;
+  contactMessages: ContactMessage[];
 }

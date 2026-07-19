@@ -1,7 +1,7 @@
 import { promises as fs } from "fs";
 import os from "os";
 import path from "path";
-import type { Business, Booking, Service, WorkingHours } from "./types";
+import type { Business, Booking, Service, WorkingHours, ContactMessage } from "./types";
 
 // Serverless platforms (Vercel, Lambda) only allow writes under the OS temp dir —
 // data here is ephemeral per warm instance. Swap this module for a real database
@@ -31,6 +31,7 @@ function seed(): Business {
     bufferMinutes: 0,
     totalRequests: 0,
     cancelledCount: 0,
+    contactMessages: [],
   };
 }
 
@@ -45,6 +46,7 @@ async function load(): Promise<Business> {
     cache.bufferMinutes ??= 0;
     cache.totalRequests ??= cache.bookings.length;
     cache.cancelledCount ??= 0;
+    cache.contactMessages ??= [];
   } catch {
     cache = seed();
     await persist();
@@ -144,4 +146,25 @@ export async function setBufferMinutes(bufferMinutes: number): Promise<void> {
   const b = await load();
   b.bufferMinutes = bufferMinutes;
   await persist();
+}
+
+export interface CreateContactMessageInput {
+  name: string;
+  email: string;
+  topic: string;
+  message: string;
+}
+
+export async function createContactMessage(input: CreateContactMessageInput): Promise<ContactMessage> {
+  const b = await load();
+  const created: ContactMessage = { ...input, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
+  b.contactMessages.unshift(created);
+  b.contactMessages = b.contactMessages.slice(0, 200);
+  await persist();
+  return created;
+}
+
+export async function listContactMessages(limit = 5): Promise<ContactMessage[]> {
+  const b = await load();
+  return b.contactMessages.slice(0, limit);
 }

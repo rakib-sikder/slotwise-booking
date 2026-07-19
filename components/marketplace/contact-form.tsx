@@ -31,10 +31,23 @@ export function ContactForm() {
       return;
     }
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 700));
-    setSubmitting(false);
-    setSent(true);
-    toast.success("Message sent — we'll reply within a day.");
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Couldn't send your message. Please try again.");
+      }
+      setSent(true);
+      toast.success("Message sent — we'll reply within a day.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't send your message. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (sent) {
