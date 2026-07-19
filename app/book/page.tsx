@@ -1,16 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useGSAP } from "@gsap/react";
-import gsap from "gsap";
-import { animate, stagger } from "animejs";
-import { CheckCircle2 } from "lucide-react";
-
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Service } from "@/lib/types";
-import { LogoMark } from "@/components/logo-mark";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
 
 function toDateStr(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -41,9 +32,6 @@ export default function BookPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState<{ date: string; slot: number; serviceName: string } | null>(null);
-  const slotGridRef = useRef<HTMLDivElement>(null);
-  const detailsRef = useRef<HTMLFormElement>(null);
-  const confirmRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetch("/api/services")
@@ -67,42 +55,6 @@ export default function BookPage() {
   useEffect(() => {
     loadSlots();
   }, [loadSlots]);
-
-  useEffect(() => {
-    if (slotGridRef.current && slots.length) {
-      animate(slotGridRef.current.children, {
-        opacity: [0, 1],
-        y: [10, 0],
-        duration: 320,
-        delay: stagger(25),
-        ease: "outQuad",
-      });
-    }
-  }, [slots]);
-
-  useGSAP(
-    () => {
-      if (detailsRef.current) {
-        gsap.from(detailsRef.current, { opacity: 0, y: 16, duration: 0.4, ease: "power3.out" });
-      }
-    },
-    { dependencies: [selectedSlot], scope: detailsRef }
-  );
-
-  useGSAP(
-    () => {
-      if (confirmRef.current) {
-        gsap.from(confirmRef.current.children, {
-          opacity: 0,
-          y: 14,
-          duration: 0.5,
-          stagger: 0.08,
-          ease: "back.out(1.7)",
-        });
-      }
-    },
-    { dependencies: [confirmed], scope: confirmRef }
-  );
 
   const selectedService = useMemo(() => services.find((s) => s.id === serviceId), [services, serviceId]);
 
@@ -138,46 +90,44 @@ export default function BookPage() {
 
   if (confirmed) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background text-foreground px-6">
-        <div ref={confirmRef} className="max-w-md text-center space-y-3">
-          <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-accent text-primary">
-            <CheckCircle2 className="size-7" />
-          </div>
+      <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 px-6">
+        <div className="max-w-md text-center space-y-3">
+          <p className="text-3xl">✅</p>
           <h1 className="text-2xl font-semibold">You&apos;re booked</h1>
-          <p className="text-muted-foreground">
+          <p className="text-neutral-500">
             {confirmed.serviceName} on {confirmed.date} at {minutesToLabel(confirmed.slot)}
           </p>
-          <Button variant="outline" className="mt-4 rounded-full" onClick={() => setConfirmed(null)}>
+          <button
+            onClick={() => setConfirmed(null)}
+            className="mt-4 text-sm rounded-full border border-neutral-300 dark:border-neutral-700 px-5 py-2 hover:border-neutral-400"
+          >
             Book another
-          </Button>
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100">
       <div className="mx-auto max-w-2xl px-6 py-12 space-y-8">
-        <header className="flex items-center justify-between">
-          <div>
-            <LogoMark className="text-base" />
-            <p className="text-muted-foreground text-sm mt-1">Book an appointment — Blue Willow Salon</p>
-          </div>
+        <header>
+          <h1 className="text-2xl font-semibold">Book an appointment</h1>
+          <p className="text-neutral-500 text-sm">Blue Willow Salon</p>
         </header>
 
         <section>
-          <h2 className="text-sm font-medium mb-2 text-muted-foreground">Service</h2>
+          <h2 className="text-sm font-medium mb-2 text-neutral-500">Service</h2>
           <div className="flex flex-wrap gap-2">
             {services.map((s) => (
               <button
                 key={s.id}
                 onClick={() => setServiceId(s.id)}
-                className={cn(
-                  "rounded-full px-4 py-2 text-sm border transition-colors",
+                className={`rounded-full px-4 py-2 text-sm border transition-colors ${
                   s.id === serviceId
-                    ? "bg-primary border-primary text-primary-foreground"
-                    : "border-border hover:border-primary/40 hover:bg-accent"
-                )}
+                    ? "bg-blue-600 border-blue-600 text-white"
+                    : "border-neutral-300 dark:border-neutral-700 hover:border-neutral-400"
+                }`}
               >
                 {s.name} · {s.durationMinutes}min{s.price ? ` · $${s.price}` : ""}
               </button>
@@ -186,18 +136,17 @@ export default function BookPage() {
         </section>
 
         <section>
-          <h2 className="text-sm font-medium mb-2 text-muted-foreground">Date</h2>
+          <h2 className="text-sm font-medium mb-2 text-neutral-500">Date</h2>
           <div className="flex gap-2 overflow-x-auto pb-1">
             {days.map((d) => (
               <button
                 key={d.value}
                 onClick={() => setDate(d.value)}
-                className={cn(
-                  "shrink-0 rounded-lg px-3 py-2 text-xs border transition-colors",
+                className={`shrink-0 rounded-lg px-3 py-2 text-xs border transition-colors ${
                   d.value === date
-                    ? "bg-primary border-primary text-primary-foreground"
-                    : "border-border hover:border-primary/40 hover:bg-accent"
-                )}
+                    ? "bg-blue-600 border-blue-600 text-white"
+                    : "border-neutral-300 dark:border-neutral-700 hover:border-neutral-400"
+                }`}
               >
                 {d.label}
               </button>
@@ -206,23 +155,22 @@ export default function BookPage() {
         </section>
 
         <section>
-          <h2 className="text-sm font-medium mb-2 text-muted-foreground">Available times</h2>
+          <h2 className="text-sm font-medium mb-2 text-neutral-500">Available times</h2>
           {loadingSlots ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
+            <p className="text-sm text-neutral-400">Loading…</p>
           ) : slots.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No availability this day — try another date.</p>
+            <p className="text-sm text-neutral-400">No availability this day — try another date.</p>
           ) : (
-            <div ref={slotGridRef} className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
               {slots.map((s) => (
                 <button
                   key={s}
                   onClick={() => setSelectedSlot(s)}
-                  className={cn(
-                    "rounded-lg px-3 py-2 text-sm border transition-colors",
+                  className={`rounded-lg px-3 py-2 text-sm border transition-colors ${
                     s === selectedSlot
-                      ? "bg-primary border-primary text-primary-foreground"
-                      : "border-border hover:border-primary/40 hover:bg-accent"
-                  )}
+                      ? "bg-blue-600 border-blue-600 text-white"
+                      : "border-neutral-300 dark:border-neutral-700 hover:border-neutral-400"
+                  }`}
                 >
                   {minutesToLabel(s)}
                 </button>
@@ -232,25 +180,31 @@ export default function BookPage() {
         </section>
 
         {selectedSlot != null && (
-          <form ref={detailsRef} onSubmit={submitBooking} className="rounded-xl border border-border p-5 space-y-3">
+          <form onSubmit={submitBooking} className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-5 space-y-3">
             <h2 className="font-medium">Your details</h2>
-            <Input
+            <input
               required
               placeholder="Name"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
+              className="w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm"
             />
-            <Input
+            <input
               required
               type="email"
               placeholder="Email"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
+              className="w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm"
             />
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button type="submit" disabled={submitting} className="rounded-lg">
+            {error && <p className="text-sm text-red-600">{error}</p>}
+            <button
+              type="submit"
+              disabled={submitting}
+              className="rounded-lg bg-blue-600 text-white text-sm font-medium px-4 py-2 disabled:opacity-50"
+            >
               {submitting ? "Booking…" : `Confirm ${minutesToLabel(selectedSlot)}`}
-            </Button>
+            </button>
           </form>
         )}
       </div>
