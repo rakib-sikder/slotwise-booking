@@ -142,7 +142,10 @@ export default function AppointmentsPage() {
                     <p className="font-medium">{b.customerName}</p>
                     <p className="text-xs text-muted-foreground">{b.customerEmail}</p>
                   </TableCell>
-                  <TableCell>{service?.name ?? "—"}</TableCell>
+                  <TableCell>
+                    {b.label ?? service?.name ?? "—"}
+                    {b.studioId && <span className="ml-1.5 text-xs text-muted-foreground">(marketplace)</span>}
+                  </TableCell>
                   <TableCell>{b.date}</TableCell>
                   <TableCell>{minutesToLabel(b.startMinutes)}</TableCell>
                   <TableCell>
@@ -246,7 +249,7 @@ function DayView({
           <div key={b.id} className="flex items-center justify-between rounded-lg border border-border px-4 py-3 text-sm">
             <div>
               <p className="font-medium">{b.customerName}</p>
-              <p className="text-muted-foreground">{service?.name ?? "Service"}</p>
+              <p className="text-muted-foreground">{b.label ?? service?.name ?? "Service"}</p>
             </div>
             <p className="font-medium">{minutesToLabel(b.startMinutes)}</p>
           </div>

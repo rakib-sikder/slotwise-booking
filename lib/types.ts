@@ -15,12 +15,20 @@ export type WorkingHours = Record<number, TimeRange[]>;
 
 export interface Booking {
   id: string;
-  serviceId: string;
+  /** Present for the legacy single-business booking flow (services catalog). */
+  serviceId?: string;
+  /** Present for marketplace studio bookings — scopes conflict checks to that studio's own calendar. */
+  studioId?: string;
+  studioName?: string;
+  /** Human label for what was booked, used when there's no serviceId to look up. */
+  label?: string;
+  price?: number;
   date: string; // "YYYY-MM-DD"
   startMinutes: number;
   endMinutes: number;
   customerName: string;
   customerEmail: string;
+  stripeSessionId?: string;
   createdAt: string;
 }
 

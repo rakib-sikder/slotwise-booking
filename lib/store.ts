@@ -97,25 +97,40 @@ export async function getBookingsForDate(date: string): Promise<Booking[]> {
   return b.bookings.filter((bk) => bk.date === date);
 }
 
+/** Bookings scoped to one studio's own calendar (marketplace flow) — studios don't share availability. */
+export async function getBookingsForStudioDate(studioId: string, date: string): Promise<Booking[]> {
+  const b = await load();
+  return b.bookings.filter((bk) => bk.studioId === studioId && bk.date === date);
+}
+
 export async function listUpcomingBookings(fromDate: string): Promise<Booking[]> {
   const b = await load();
   return b.bookings.filter((bk) => bk.date >= fromDate).sort((a, b2) => a.date.localeCompare(b2.date) || a.startMinutes - b2.startMinutes);
 }
 
 export interface CreateBookingInput {
-  serviceId: string;
+  serviceId?: string;
+  studioId?: string;
+  studioName?: string;
+  label?: string;
+  price?: number;
   date: string;
   startMinutes: number;
   endMinutes: number;
   customerName: string;
   customerEmail: string;
+  stripeSessionId?: string;
 }
 
-/** Re-checks for overlap at write time so two near-simultaneous requests can't both win the same slot. */
+/**
+ * Re-checks for overlap at write time so two near-simultaneous requests can't both win the same
+ * slot. Studio bookings only conflict with other bookings on that SAME studio's calendar —
+ * different studios (and the legacy single-business flow) don't share availability.
+ */
 export async function createBooking(input: CreateBookingInput): Promise<Booking> {
   const b = await load();
-  const sameDay = b.bookings.filter((bk) => bk.date === input.date);
-  const overlaps = sameDay.some(
+  const sameCalendar = b.bookings.filter((bk) => bk.date === input.date && bk.studioId === input.studioId);
+  const overlaps = sameCalendar.some(
     (bk) => input.startMinutes < bk.endMinutes && bk.startMinutes < input.endMinutes
   );
   if (overlaps) {

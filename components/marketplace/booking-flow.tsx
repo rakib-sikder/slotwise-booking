@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, ChevronLeft, PartyPopper, Tag } from "lucide-react";
+import { toast } from "sonner";
 
 import type { Studio } from "@/lib/marketplace-data";
 import { addOns } from "@/lib/marketplace-data";
@@ -27,23 +28,16 @@ const upcomingDays = Array.from({ length: 10 }, (_, i) => {
   return { value: toDateStr(d), label: d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) };
 });
 
-function hashSeed(input: string): number {
-  let h = 0;
-  for (let i = 0; i < input.length; i++) h = (h * 31 + input.charCodeAt(i)) >>> 0;
-  return h;
-}
-
-function getSlotsFor(studioId: string, date: string, duration: number): number[] {
-  const seed = hashSeed(`${studioId}-${date}`);
-  const slots: number[] = [];
-  for (let hour = 8; hour <= 20 - duration; hour++) {
-    const taken = (seed >> (hour % 24)) % 5 === 0;
-    if (!taken) slots.push(hour * 60);
-  }
-  return slots;
+interface ConfirmedBooking {
+  id: string;
+  date: string;
+  startMinutes: number;
+  price?: number;
+  customerEmail: string;
 }
 
 export function BookingFlow({ studio }: { studio: Studio }) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const initialDate = searchParams.get("date") ?? upcomingDays[0].value;
 
@@ -51,15 +45,65 @@ export function BookingFlow({ studio }: { studio: Studio }) {
   const [date, setDate] = useState(upcomingDays.some((d) => d.value === initialDate) ? initialDate : upcomingDays[0].value);
   const [duration, setDuration] = useState(2);
   const [slot, setSlot] = useState<number | null>(null);
+  const [slots, setSlots] = useState<number[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(true);
   const [selectedAddOns, setSelectedAddOns] = useState<string[]>([]);
   const [form, setForm] = useState({ name: "", email: "", phone: "", notes: "" });
   const [coupon, setCoupon] = useState("");
   const [couponApplied, setCouponApplied] = useState(false);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [confirmed, setConfirmed] = useState<{ id: string } | null>(null);
+  const [confirmed, setConfirmed] = useState<ConfirmedBooking | null>(null);
+  const [confirming, setConfirming] = useState(false);
 
-  const slots = useMemo(() => getSlotsFor(studio.id, date, duration), [studio.id, date, duration]);
+  // Real availability — reflects actual bookings on this studio's own calendar, not a guess.
+  useEffect(() => {
+    let cancelled = false;
+    setSlotsLoading(true);
+    fetch(`/api/studio-slots?studioId=${studio.id}&date=${date}&durationHours=${duration}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled) setSlots(data.slots ?? []);
+      })
+      .finally(() => {
+        if (!cancelled) setSlotsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [studio.id, date, duration]);
+
+  // Returning from Stripe Checkout — verify payment server-side, then create the real booking.
+  useEffect(() => {
+    const sessionId = searchParams.get("session_id");
+    const wasCancelled = searchParams.get("cancelled");
+
+    if (wasCancelled) {
+      toast.error("Checkout was cancelled — no charge was made.");
+      router.replace(`/studios/${studio.slug}/book`);
+      return;
+    }
+
+    if (!sessionId || confirmed) return;
+
+    setConfirming(true);
+    fetch("/api/checkout/confirm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId }),
+    })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Could not confirm your booking");
+        setConfirmed(data);
+      })
+      .catch((err) => {
+        toast.error(err instanceof Error ? err.message : "Could not confirm your booking");
+        router.replace(`/studios/${studio.slug}/book`);
+      })
+      .finally(() => setConfirming(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const toggleAddOn = (id: string) => {
     setSelectedAddOns((prev) => (prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id]));
@@ -87,12 +131,50 @@ export function BookingFlow({ studio }: { studio: Studio }) {
 
   const canContinue = step === 0 ? slot != null : step === 2 ? form.name.trim() && form.email.trim() : true;
 
-  const confirmBooking = async () => {
+  const addOnLabel = selectedAddOns
+    .map((id) => addOns.find((a) => a.id === id)?.name)
+    .filter(Boolean)
+    .join(", ");
+
+  const startCheckout = async () => {
+    if (slot == null) return;
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 900));
-    setConfirmed({ id: `SW-${hashSeed(`${studio.id}-${date}-${slot}-${form.email}`).toString(36).toUpperCase().slice(0, 6)}` });
-    setSubmitting(false);
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studioId: studio.id,
+          studioSlug: studio.slug,
+          studioName: studio.name,
+          date,
+          startMinutes: slot,
+          durationHours: duration,
+          addOnLabel: addOnLabel || undefined,
+          customerName: form.name,
+          customerEmail: form.email,
+          customerPhone: form.phone || undefined,
+          notes: form.notes || undefined,
+          total,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Could not start checkout");
+      window.location.href = data.url;
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not start checkout");
+      setSubmitting(false);
+    }
   };
+
+  if (confirming) {
+    return (
+      <div className="mx-auto flex max-w-lg flex-col items-center px-6 py-24 text-center">
+        <div className="size-10 animate-spin rounded-full border-2 border-brand-violet border-t-transparent" />
+        <p className="mt-6 text-muted-foreground">Confirming your payment…</p>
+      </div>
+    );
+  }
 
   if (confirmed) {
     return (
@@ -107,21 +189,21 @@ export function BookingFlow({ studio }: { studio: Studio }) {
         </motion.div>
         <h1 className="mt-6 font-heading text-3xl font-semibold tracking-tight">You&apos;re booked</h1>
         <p className="mt-2 text-muted-foreground" suppressHydrationWarning>
-          {studio.name} · {new Date(date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })} at{" "}
-          {slot != null && minutesToLabel(slot)} · {duration}h
+          {studio.name} · {new Date(confirmed.date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })} at{" "}
+          {minutesToLabel(confirmed.startMinutes)}
         </p>
         <Card className="mt-6 w-full p-5 text-left">
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Confirmation code</span>
-            <span className="font-mono font-medium">{confirmed.id}</span>
+            <span className="font-mono font-medium">{confirmed.id.slice(0, 8).toUpperCase()}</span>
           </div>
           <div className="mt-2 flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Total paid</span>
-            <span className="font-medium">${total.toFixed(2)}</span>
+            <span className="font-medium">${(confirmed.price ?? 0).toFixed(2)}</span>
           </div>
           <div className="mt-2 flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Confirmation sent to</span>
-            <span className="font-medium">{form.email}</span>
+            <span className="font-medium">{confirmed.customerEmail}</span>
           </div>
         </Card>
         <div className="mt-8 flex gap-3">
@@ -208,7 +290,9 @@ export function BookingFlow({ studio }: { studio: Studio }) {
                   </div>
 
                   <p className="mt-5 text-xs font-medium text-muted-foreground">Start time</p>
-                  {slots.length === 0 ? (
+                  {slotsLoading ? (
+                    <p className="mt-2 text-sm text-muted-foreground">Checking availability…</p>
+                  ) : slots.length === 0 ? (
                     <p className="mt-2 text-sm text-muted-foreground">No availability for this date — try another day or shorter duration.</p>
                   ) : (
                     <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-4">
@@ -360,9 +444,9 @@ export function BookingFlow({ studio }: { studio: Studio }) {
               <Button
                 className="rounded-full bg-gradient-to-r from-brand-violet to-brand-cyan text-white disabled:opacity-50"
                 disabled={submitting || !form.name || !form.email}
-                onClick={confirmBooking}
+                onClick={startCheckout}
               >
-                {submitting ? "Confirming…" : `Confirm & pay $${total.toFixed(2)}`}
+                {submitting ? "Redirecting to checkout…" : `Continue to payment · $${total.toFixed(2)}`}
               </Button>
             )}
           </div>

@@ -93,7 +93,7 @@ export default function DashboardOverviewPage() {
               <div key={b.id} className="flex items-center justify-between px-5 py-3 text-sm">
                 <div>
                   <p className="font-medium">{b.customerName}</p>
-                  <p className="text-muted-foreground">{service?.name ?? "Service"}</p>
+                  <p className="text-muted-foreground">{b.label ?? service?.name ?? "Service"}</p>
                 </div>
                 <div className="text-right">
                   <p>{b.date}</p>
