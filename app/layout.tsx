@@ -1,15 +1,27 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { DM_Sans, JetBrains_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const dmSans = DM_Sans({
+  variable: "--font-dm-sans",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
+  weight: ["400", "500"],
   subsets: ["latin"],
+});
+
+// General Sans is a Fontshare face (not on Google Fonts) — self-hosted so no
+// render-blocking CDN @import is needed.
+const generalSans = localFont({
+  variable: "--font-general-sans",
+  src: [
+    { path: "./fonts/GeneralSans-Semibold.woff2", weight: "600", style: "normal" },
+    { path: "./fonts/GeneralSans-Bold.woff2", weight: "700", style: "normal" },
+  ],
 });
 
 export const metadata: Metadata = {
@@ -25,7 +37,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${dmSans.variable} ${generalSans.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
